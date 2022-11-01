@@ -1,0 +1,8 @@
+target/
+.idea/
+/project/project/
+.java-version
+assets/
+.bsp/
+/logs/
+/posts/
