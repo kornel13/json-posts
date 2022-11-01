@@ -9,6 +9,9 @@ In order to build and run the app it's required to have installed:
 
 To run a project simply type `sbt run` in the terminal
 The app should be accessible from `http://localhost:8080`
+By default the posts are saved in `posts` directory inside the app's root folder
+It can be changed in the config file `src/main/resources/application.conf` 
+in the field `post.storage.directory`
 
 ## Testing the app
 As it's already mentioned, the app allows provides and endpoint to
@@ -26,6 +29,7 @@ curl --request POST 'localhost:8080/post' \
 }'
 ```
 Result with 200 code indicates success, otherwise it will fail with 500
+Subsequent calls will overwrite previously saved files
 
 ## Additional routes
 There are additional basic routes
