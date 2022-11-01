@@ -38,7 +38,7 @@ object Main extends IOApp {
     appResources: Resources[F],
   ): F[Unit] = {
     for {
-      postProcessor          <- PostProcessor.of(config.post, appResources.httpClient)
+      postProcessor          <- PostProcessor.of(config.post, appResources.httpClient, registry)
       healthAndMetricsRoutes = new FundamentalRoutes(registry)
       processingRoutes       = new ProcessingRoutes(postProcessor)
       httpServer = Http.server(

@@ -12,6 +12,8 @@ import posting.domain.ProcessingError.ProcessingErrorType
 import posting.domain.{EmailAddress, ProcessingError}
 import posting.loggerStub
 
+import scala.concurrent.duration.FiniteDuration
+
 class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with EitherValues {
   import posting.logic.PostProcessorSpec._
   implicit val runtime = cats.effect.unsafe.IORuntime.global
@@ -20,12 +22,12 @@ class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with 
     "must process posts" in new Fixture {
       (postReader.getPosts _)
         .expects()
-        .returning(validPosts.asRightIO[ProcessingError])
+        .returning(validPosts.asRightIO)
         .once()
 
       (postStorage.storePosts _)
         .expects(validPosts)
-        .returning(().asRightIO[ProcessingError])
+        .returning(().asRightIO)
         .once()
 
       val result = postProcessor.savePosts().unsafeRunSync()
@@ -35,17 +37,17 @@ class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with 
     "must process posts with comments" in new Fixture {
       (postReader.getPosts _)
         .expects()
-        .returning(validPosts.asRightIO[ProcessingError])
+        .returning(validPosts.asRightIO)
         .once()
 
       (postReader.getComments _)
         .expects()
-        .returning(validComments.asRightIO[ProcessingError])
+        .returning(validComments.asRightIO)
         .once()
 
       (postStorage.storePostsWithComments _)
         .expects(expectedPostWithComments)
-        .returning(().asRightIO[ProcessingError])
+        .returning(().asRightIO)
         .once()
 
       val result = postProcessor.savePostsWithComments().unsafeRunSync()
@@ -55,7 +57,7 @@ class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with 
     "must fail on invalid posts" in new Fixture {
       (postReader.getPosts _)
         .expects()
-        .returning(invalidPosts.asRightIO[ProcessingError])
+        .returning(invalidPosts.asRightIO)
         .once()
 
       val result = postProcessor.savePosts().unsafeRunSync()
@@ -66,12 +68,12 @@ class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with 
     "must fail on invalid posts with comments" in new Fixture {
       (postReader.getPosts _)
         .expects()
-        .returning(validPosts.asRightIO[ProcessingError])
+        .returning(validPosts.asRightIO)
         .once()
 
       (postReader.getComments _)
         .expects()
-        .returning(invalidComments.asRightIO[ProcessingError])
+        .returning(invalidComments.asRightIO)
         .once()
 
       val result = postProcessor.savePostsWithComments().unsafeRunSync()
@@ -82,12 +84,12 @@ class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with 
     "must fail on reader error" in new Fixture {
       (postReader.getPosts _)
         .expects()
-        .returning(ProcessingError(ProcessingErrorType.DecodingError, "").asLeftIO[List[Post]])
+        .returning(ProcessingError(ProcessingErrorType.DecodingError, "").asLeftIO)
         .once()
 
       (postStorage.storePosts _)
         .expects(validPosts)
-        .returning(().asRightIO[ProcessingError])
+        .returning(().asRightIO)
         .never()
 
       val result = postProcessor.savePosts().unsafeRunSync()
@@ -98,12 +100,12 @@ class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with 
     "must fail on storage error" in new Fixture {
       (postReader.getPosts _)
         .expects()
-        .returning(validPosts.asRightIO[ProcessingError])
+        .returning(validPosts.asRightIO)
         .once()
 
       (postStorage.storePosts _)
         .expects(validPosts)
-        .returning(ProcessingError(ProcessingErrorType.FileSystemError, "").asLeftIO[Unit])
+        .returning(ProcessingError(ProcessingErrorType.FileSystemError, "").asLeftIO)
         .once()
 
       val result = postProcessor.savePosts().unsafeRunSync()
@@ -114,9 +116,14 @@ class PostProcessorSpec extends AnyFreeSpec with Matchers with MockFactory with 
   }
 
   trait Fixture {
-    val postReader    = mock[PostReader[IO]]
-    val postStorage   = mock[PostStorage[IO]]
-    val postProcessor = new PostProcessor.Impl[IO](postReader, postStorage, loggerStub[IO])
+    val postReader  = mock[PostReader[IO]]
+    val postStorage = mock[PostStorage[IO]]
+    val metricsStub = new PostProcessingMetrics[IO] {
+      override def measureProcessingDuration(duration: FiniteDuration, postType: String): IO[Unit] = IO.unit
+      override def countCallsForProcessing(postsNumber: Int): IO[Unit]                             = IO.unit
+      override def countProcessedCalls(): IO[Unit]                                                 = IO.unit
+    }
+    val postProcessor = new PostProcessor.Impl[IO](postReader, postStorage, metricsStub, loggerStub[IO])
   }
 
   implicit final class BoxValueWithContext[A](private val value: A) {

@@ -14,7 +14,6 @@ inThisBuild(
       "-language:higherKinds",
       "-deprecation",
       "-feature",
-      "-Xlint:-unused,_",
     ),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
   ),
